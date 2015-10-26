@@ -4,7 +4,7 @@ var argv = require('yargs').argv,
     http = require('http'),
     https = require('https'),
     bodyParser = require('body-parser'),
-    logger = require('express-logger'),
+    logger = require('express-logger')({path: argv.log_file}),
     multer = require('multer'),
     upload = multer(),
     fs = require('fs');
@@ -14,10 +14,15 @@ var options = {
   cert: fs.readFileSync(argv.ssl_cert)
 };
 
+var allowCrossDomain = function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+};
+
 var models = {};
 
-router.use(bodyParser.json());
-router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get('/', function (req, res) {
   res.json(models);
@@ -61,7 +66,10 @@ router['delete']('/:model', function (req, res) {
 });
 
 var app = express();
-app.use(logger({path: argv.log_file}));
+app.use(allowCrossDomain);
+app.use(logger);
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/', router);
 
 http.createServer(app).listen(argv.http_port || 80);
