@@ -1,0 +1,62 @@
+#!/bin/sh
+
+SEED_FILE=$(readlink -f "$0");
+SEED_ROOT=$(dirname "$SEED_FILE");
+SEED_PWD=$(if [ -z "$SEED_PWD" ]; then echo "$SEED_ROOT"; else echo "$SEED_PWD"; fi)
+SEED_ARG_PREV='';
+SEED_NAME='';
+SEED_NEW='';
+chmod -R +x bin;
+mkdir -p share;
+mkdir -p src;
+
+export root="$SEED_ROOT";
+export userpwd="$SEED_PWD";
+
+for SEED_ARG in "$@"; do
+  if [ "$SEED_ARG_PREV" = '--name' ]; then
+    SEED_NAME="$SEED_ARG";
+    SEED_ARG_PREV='';
+  elif [ "$SEED_ARG_PREV" = '--owner' ]; then
+    SEED_OWNER="$SEED_ARG";
+    SEED_ARG_PREV='';
+  elif [ "$SEED_ARG_PREV" = '--new' ]; then
+    SEED_NEW="$SEED_ARG";
+    SEED_ARG_PREV='';
+  elif [ $(echo "$SEED_ARG" | cut -c1) = '/' ]; then
+    echo "Running: $SEED_ROOT/bin/$SEED_ARG_PREV$SEED_ARG.sh"; echo;
+    "$SEED_ROOT/bin/$SEED_ARG_PREV$SEED_ARG.sh"; echo;
+  elif [ -f "$SEED_ROOT/bin/$SEED_ARG.sh" ]; then
+    echo "Running: $SEED_ROOT/bin/$SEED_ARG.sh"; echo;
+    "$SEED_ROOT/bin/$SEED_ARG.sh"; echo;
+    SEED_ARG_PREV="";
+  else
+    SEED_ARG_PREV="$SEED_ARG";
+  fi
+done
+if [ -n "$SEED_NEW" ]; then
+  if [ -z "$/usr/local/bin/$SEED_NEW" ]; then
+    echo "Creating shortcut: /usr/local/bin/$SEED_NEW";
+    cmd_shebang="#!/bin/sh";
+    cmd_vars="export SEED_PWD=\$PWD";
+    cmd_cd="cd $SEED_ROOT";
+    cmd_exec="./seed --name '$SEED_NEW' \$@";
+    echo "$cmd_shebang\n\n$cmd_vars;\n$cmd_cd;\n$cmd_exec;" > "/usr/local/bin/$SEED_NEW";
+    SEED_NAME="$SEED_NEW";
+    chmod +x "/usr/local/bin/$SEED_NAME";
+  else
+    echo "File exists: /usr/local/bin/$SEED_NEW, remove it or use another shortcut";
+  fi
+fi
+if [ -n "$SEED_OWNER" ]; then
+  if [ -z "$SEED_NAME" ]; then
+    echo "Seed name not provided, owner not set";
+  else
+    echo "Set owner: $SEED_OWNER";
+    SEED_OWNER_GROUP=$(groups "$SEED_OWNER" | sed -r 's/.*: //g' | sed -r 's/ .*//g');
+    echo "Set owner group: $SEED_OWNER_GROUP";
+    chown -R "$SEED_OWNER":"$SEED_OWNER_GROUP" "$SEED_ROOT";
+    chown "$SEED_OWNER":"$SEED_OWNER_GROUP" "/usr/local/bin/$SEED_NAME";
+  fi
+fi
+echo 'Finished';
