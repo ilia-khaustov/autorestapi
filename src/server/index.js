@@ -24,7 +24,7 @@ router.get('/', function (req, res) {
 });
 
 router.get('/:model', function (req, res) {
-  if (!models[req.params.model])) {
+  if (!models[req.params.model]) {
     return res.sendStatus(404);
   }
   res.json(models[req.params.model]);
